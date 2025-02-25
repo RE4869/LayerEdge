@@ -4,6 +4,8 @@ import chalk from "chalk";
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { Wallet } from "ethers";
+import banner from './utils/banner.js';
+
 
 const logger = {
     verbose: true, 
@@ -29,13 +31,7 @@ const logger = {
         
         let errorDetails = '';
         if (axios.isAxiosError(error)) {
-            errorDetails = `
-            状态: ${error.response?.status || 'N/A'}
-            状态文本: ${error.response?.statusText || 'N/A'}
-            URL: ${error.config?.url || 'N/A'}
-            方法: ${error.config?.method?.toUpperCase() || 'N/A'}
-            响应数据: ${JSON.stringify(error.response?.data || {}, null, 2)}
-            头信息: ${JSON.stringify(error.config?.headers || {}, null, 2)}`;
+            errorDetails = `\n状态: ${error.response?.status || 'N/A'}\n状态文本: ${error.response?.statusText || 'N/A'}\nURL: ${error.config?.url || 'N/A'}\n方法: ${error.config?.method?.toUpperCase() || 'N/A'}\n响应数据: ${JSON.stringify(error.response?.data || {}, null, 2)}\n请求头: ${JSON.stringify(error.config?.headers || {}, null, 2)}`;
         }
         return `${error.message}${errorDetails}`;
     },
@@ -44,15 +40,16 @@ const logger = {
         const timestamp = this._formatTimestamp();
         const levelStyle = this._getLevelStyle(level);
         const levelTag = levelStyle(`[${level.toUpperCase()}]`);
-        const header = chalk.cyan('◆ LayerEdge 自动机器人');
+        const header = chalk.cyan('◆ LayerEdge 自动化机器人');
 
         let formattedMessage = `${header} ${timestamp} ${levelTag} ${message}`;
         
         if (value) {
+            const formattedValue = typeof value === 'object' ? JSON.stringify(value) : value;
             const valueStyle = level === 'error' ? chalk.red : 
                              level === 'warn' ? chalk.yellow : 
                              chalk.green;
-            formattedMessage += ` ${valueStyle(value)}`;
+            formattedMessage += ` ${valueStyle(formattedValue)}`;
         }
 
         if (error && this.verbose) {
@@ -71,13 +68,13 @@ const logger = {
 
     progress(wallet, step, status) {
         const progressStyle = status === 'success' 
-            ? chalk.green('✅') 
+            ? chalk.green('✔') 
             : status === 'failed' 
-            ? chalk.red('❌') 
-            : chalk.yellow('➡️');
+            ? chalk.red('✘') 
+            : chalk.yellow('➤');
         
         console.log(
-            chalk.cyan('◆ LayerEdge 自动机器人'),
+            chalk.cyan('◆ LayerEdge 自动化机器人'),
             chalk.gray(`[${new Date().toLocaleTimeString()}]`),
             chalk.blueBright(`[进度]`),
             `${progressStyle} ${wallet} - ${step}`
@@ -90,7 +87,7 @@ class RequestHandler {
     static async makeRequest(config, retries = 30, backoffMs = 2000) {
         for (let i = 0; i < retries; i++) {
             try {
-                logger.verbose(`尝试请求 (${i + 1}/${retries})`, `URL: ${config.url}`);
+                logger.verbose(`正在尝试请求 (${i + 1}/${retries})`, `URL: ${config.url}`);
                 const response = await axios(config);
                 logger.verbose(`请求成功`, `状态: ${response.status}`);
                 return response;
@@ -98,14 +95,14 @@ class RequestHandler {
                 const isLastRetry = i === retries - 1;
                 const status = error.response?.status;
                 
-                // 对500错误的特殊处理
+                // 特殊处理500错误
                 if (status === 500) {
                     logger.error(`服务器错误 (500)`, `尝试 ${i + 1}/${retries}`, error);
                     if (isLastRetry) break;
                     
                     // 对500错误进行指数退避
                     const waitTime = backoffMs * Math.pow(1.5, i);
-                    logger.warn(`等待 ${waitTime/1000}秒后重试...`);
+                    logger.warn(`等待 ${waitTime/1000}s 后重试...`);
                     await delay(waitTime/1000);
                     continue;
                 }
@@ -131,7 +128,7 @@ function delay(ms) {
 async function saveToFile(filename, data) {
     try {
         await fs.appendFile(filename, `${data}\n`, 'utf-8');
-        logger.info(`数据保存到 ${filename}`);
+        logger.info(`数据已保存到 ${filename}`);
     } catch (error) {
         logger.error(`保存数据到 ${filename} 失败: ${error.message}`);
     }
@@ -144,7 +141,7 @@ async function readFile(pathFile) {
             .map(data => data.trim())
             .filter(data => data.length > 0);
     } catch (error) {
-        logger.error(`读取文件错误: ${error.message}`);
+        logger.error(`读取文件出错: ${error.message}`);
         return [];
     }
 }
@@ -170,11 +167,11 @@ class LayerEdgeConnection {
         this.proxy = proxy;
         this.retryCount = 30;
 
-        // 浏览器样式的头信息
+        // 类浏览器的请求头
         this.headers = {
             'Accept': 'application/json, text/plain, */*',
             'Accept-Encoding': 'gzip, deflate, br',
-            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
             'Origin': 'https://layeredge.io',
             'Referer': 'https://layeredge.io/',
             'Sec-Fetch-Dest': 'empty',
@@ -200,7 +197,7 @@ class LayerEdgeConnection {
             : Wallet.createRandom();
             
         logger.verbose(`初始化 LayerEdgeConnection`, 
-            `钱包: ${this.wallet.address}\n代理: ${this.proxy || '无'}`);
+            `钱包地址: ${this.wallet.address}\n代理: ${this.proxy || '无'}`);
     }
 
     async makeRequest(method, url, config = {}) {
@@ -233,7 +230,7 @@ class LayerEdgeConnection {
             logger.info("邀请码有效", response.data);
             return true;
         } else {
-            logger.error("检查邀请码失败");
+            logger.error("验证邀请码失败");
             return false;
         }
     }
@@ -250,17 +247,17 @@ class LayerEdgeConnection {
         );
 
         if (response && response.data) {
-            logger.info("钱包成功注册", response.data);
+            logger.info("钱包注册成功", response.data);
             return true;
         } else {
-            logger.error("注册钱包失败", "错误");
+            logger.error("钱包注册失败", "错误");
             return false;
         }
     }
 
     async connectNode() {
         const timestamp = Date.now();
-        const message = `节点激活请求 ${this.wallet.address} 在 ${timestamp}`;
+        const message = `节点激活请求，钱包地址: ${this.wallet.address}，时间戳: ${timestamp}`;
         const sign = await this.wallet.signMessage(message);
 
         const dataSign = {
@@ -268,7 +265,7 @@ class LayerEdgeConnection {
             timestamp: timestamp,
         };
 
-        // 为POST请求添加特定的内容类型头
+        // 为POST请求特别设置Content-Type头
         const config = {
             data: dataSign,
             headers: {
@@ -293,7 +290,7 @@ class LayerEdgeConnection {
 
     async stopNode() {
         const timestamp = Date.now();
-        const message = `节点停用请求 ${this.wallet.address} 在 ${timestamp}`;
+        const message = `节点停用请求，钱包地址: ${this.wallet.address}，时间戳: ${timestamp}`;
         const sign = await this.wallet.signMessage(message);
 
         const dataSign = {
@@ -308,7 +305,7 @@ class LayerEdgeConnection {
         );
 
         if (response && response.data) {
-            logger.info("停止节点并领取积分结果:", response.data);
+            logger.info("停止并领取积分结果:", response.data);
             return true;
         } else {
             logger.error("停止节点并领取积分失败");
@@ -323,7 +320,7 @@ class LayerEdgeConnection {
         );
 
         if (response && response.data && response.data.data.startTimestamp !== null) {
-            logger.info("节点状态运行中", response.data);
+            logger.info("节点状态: 运行中", response.data);
             return true;
         } else {
             logger.error("节点未运行，尝试启动节点...");
@@ -341,56 +338,44 @@ class LayerEdgeConnection {
             logger.info(`${this.wallet.address} 总积分:`, response.data.data?.nodePoints || 0);
             return true;
         } else {
-            logger.error("检查总积分失败..");
+            logger.error("获取总积分失败...");
             return false;
         }
     }
 }
 
-// 主应用程序
+// 主程序
 async function readWallets() {
     try {
-        await fs.access("wallets.txt");
-        const data = await fs.readFile("wallets.txt", "utf-8");
-        const lines = data.split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0);
-
-        const wallets = lines.map(line => {
-            const [address, privateKey] = line.split(',');
-            if (!address || !privateKey) {
-                throw new Error(`无效的钱包格式: ${line}`);
-            }
-            return { address: address.trim(), privateKey: privateKey.trim() };
-        });
-
-        return wallets;
+        await fs.access("wallets.json");
+        const data = await fs.readFile("wallets.json", "utf-8");
+        return JSON.parse(data);
     } catch (err) {
         if (err.code === 'ENOENT') {
-            logger.info("wallets.txt 文件未找到");
-        } else {
-            logger.error(`读取 wallets.txt 文件失败: ${err.message}`);
+            logger.info("未找到 wallets.json 文件");
+            return [];
         }
-        return [];
+        throw err;
     }
 }
 
 async function run() {
-    logger.info('启动 Layer Edge 自动机器人', '初始化中...');
+    console.log(banner);
+    logger.info('启动 LayerEdge 自动化机器人', '初始化中...');
     
     try {
         const proxies = await readFile('proxy.txt');
         let wallets = await readWallets();
         
         if (proxies.length === 0) {
-            logger.warn('无代理', '运行时不支持代理');
+            logger.warn('没有代理', '无代理支持');
         }
         
         if (wallets.length === 0) {
             throw new Error('未配置钱包');
         }
 
-        logger.info('配置已加载', `钱包: ${wallets.length}, 代理: ${proxies.length}`);
+        logger.info('配置已加载', `钱包数量: ${wallets.length}, 代理数量: ${proxies.length}`);
 
         while (true) {
             for (let i = 0; i < wallets.length; i++) {
@@ -399,7 +384,7 @@ async function run() {
                 const { address, privateKey } = wallet;
                 
                 try {
-                    logger.verbose(`处理钱包 ${i + 1}/${wallets.length}`, address);
+                    logger.verbose(`正在处理钱包 ${i + 1}/${wallets.length}`, address);
                     const socket = new LayerEdgeConnection(proxy, privateKey);
                     
                     logger.progress(address, '钱包处理开始', 'start');
@@ -423,12 +408,12 @@ async function run() {
                 } catch (error) {
                     logger.error(`处理钱包 ${address} 失败`, '', error);
                     logger.progress(address, '钱包处理失败', 'failed');
-                    await delay(5); // 等待5秒后处理下一个钱包
+                    await delay(5); // 处理完一个钱包后，等待5秒再处理下一个
                 }
             }
             
-            logger.warn('循环完成', '等待1小时后再次运行...');
-            await delay(60 * 60);
+            logger.warn('周期完成', '等待 1 小时后继续...');
+            await delay(60 * 60); // 1小时后重新开始
         }
     } catch (error) {
         logger.error('发生致命错误', '', error);

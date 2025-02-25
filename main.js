@@ -4,7 +4,6 @@ import chalk from "chalk";
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { Wallet } from "ethers";
-import banner from './utils/banner.js';
 
 
 const logger = {

@@ -5,6 +5,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { Wallet } from "ethers";
 
+
 const logger = {
     verbose: true, 
     
@@ -387,52 +388,35 @@ async function run() {
                     logger.progress(address, '钱包处理开始', 'start');
                     logger.info(`钱包详情`, `地址: ${address}, 代理: ${proxy || '无代理'}`);
 
-                    logger.progress(address, '检查邀请码', 'start');
-                    const inviteValid = await socket.checkInvite();
-                    if (!inviteValid) {
-                        logger.warn(`钱包 ${address} 邀请码无效，跳过...`);
-                        continue;
+                    logger.progress(address, '检查节点状态', 'processing');
+                    const isRunning = await socket.checkNodeStatus();
+
+                    if (isRunning) {
+                        logger.progress(address, '领取节点积分', 'processing');
+                        await socket.stopNode();
                     }
 
-                    logger.progress(address, '钱包注册', 'start');
-                    const registered = await socket.registerWallet();
-                    if (!registered) {
-                        logger.warn(`钱包 ${address} 注册失败，跳过...`);
-                        continue;
-                    }
+                    logger.progress(address, '重新连接节点', 'processing');
+                    await socket.connectNode();
 
-                    logger.progress(address, '连接节点', 'start');
-                    const connected = await socket.connectNode();
-                    if (!connected) {
-                        logger.warn(`钱包 ${address} 无法连接节点，跳过...`);
-                        continue;
-                    }
+                    logger.progress(address, '检查节点积分', 'processing');
+                    await socket.checkNodePoints();
 
-                    logger.progress(address, '检查节点状态', 'start');
-                    const nodeStatus = await socket.checkNodeStatus();
-                    if (!nodeStatus) {
-                        logger.warn(`钱包 ${address} 节点未启用，跳过...`);
-                        continue;
-                    }
-
-                    logger.progress(address, '检查积分', 'start');
-                    const checkPoints = await socket.checkNodePoints();
-                    if (!checkPoints) {
-                        logger.warn(`钱包 ${address} 获取积分失败，跳过...`);
-                        continue;
-                    }
-
-                    logger.success(`钱包 ${address} 操作完成`);
-                } catch (err) {
-                    logger.error(`钱包处理出错: ${err.message}`, address, err);
+                    logger.progress(address, '钱包处理完成', 'success');
+                } catch (error) {
+                    logger.error(`处理钱包 ${address} 失败`, '', error);
+                    logger.progress(address, '钱包处理失败', 'failed');
+                    await delay(5); // 处理完一个钱包后，等待5秒再处理下一个
                 }
             }
-            await delay(5);
+            
+            logger.warn('周期完成', '等待 1 小时后继续...');
+            await delay(60 * 60); // 1小时后重新开始
         }
-    } catch (err) {
-        logger.error(`初始化失败: ${err.message}`);
+    } catch (error) {
+        logger.error('发生致命错误', '', error);
+        process.exit(1);
     }
 }
 
-// 执行脚本
-run().catch(err => logger.error('脚本执行失败:', err));
+run();

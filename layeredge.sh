@@ -105,39 +105,39 @@ function deploy_layeredge_node() {
 
     # 让用户输入代理地址
     echo "请输入代理地址（格式如 http://代理账号:代理密码@127.0.0.1:8080），每次输入一个，直接按回车结束输入："
-    > proxy.txt  # 清空或创建 proxy.txt 文件
+    > LayerEdge/proxy.txt  # 清空或创建 LayerEdge/proxy.txt 文件
     while true; do
         read -p "代理地址（回车结束）：" proxy
         if [ -z "$proxy" ]; then
             break  # 如果用户直接按回车，结束输入
         fi
-        echo "$proxy" >> LayerEdge/proxy.txt  # 将代理地址写入 proxy.txt
+        echo "$proxy" >> LayerEdge/proxy.txt  # 将代理地址写入 LayerEdge/proxy.txt
     done
 
     # 检查 wallets.json 是否存在，并提示是否覆盖
     echo "检查钱包配置文件..."
     overwrite="no"
-    if [ -f "wallets.json" ]; then
-        read -p "wallets.json 已存在，是否要重新输入钱包信息？(y/n) " overwrite
+    if [ -f "LayerEdge/wallets.json" ]; then
+        read -p "LayerEdge/wallets.json 已存在，是否要重新输入钱包信息？(y/n) " overwrite
         if [[ "$overwrite" =~ ^[Yy]$ ]]; then
-            rm -f wallets.json
+            rm -f LayerEdge/wallets.json
             echo "已清除旧的钱包信息，请重新输入。"
         else
-            echo "使用现有的 wallets.json 文件。"
+            echo "使用现有的 LayerEdge/wallets.json 文件。"
         fi
     fi
 
     # 输入钱包信息（如果需要）
-    if [ ! -f "wallets.json" ] || [[ "$overwrite" =~ ^[Yy]$ ]]; then
-        > wallets.json  # 创建或清空文件
+    if [ ! -f "LayerEdge/wallets.json" ] || [[ "$overwrite" =~ ^[Yy]$ ]]; then
+        > LayerEdge/wallets.json  # 创建或清空文件
         echo "请输入钱包信息，格式必须为：钱包地址,私钥"
         echo "每次输入一个钱包，直接按回车结束输入："
-        echo "[" > wallets.json  # 开始 JSON 数组
+        echo "[" > LayerEdge/wallets.json  # 开始 JSON 数组
         while true; do
             read -p "钱包地址：" wallet_address
             if [ -z "$wallet_address" ]; then
-                if [ -s "wallets.json" ]; then
-                    echo "]" >> wallets.json  # 结束 JSON 数组
+                if [ -s "LayerEdge/wallets.json" ]; then
+                    echo "]" >> LayerEdge/wallets.json  # 结束 JSON 数组
                     break  # 如果 wallets.json 不为空，允许结束
                 else
                     echo "钱包地址不能为空，请重新输入！"
@@ -151,8 +151,8 @@ function deploy_layeredge_node() {
                 continue
             fi
 
-            # 将钱包信息写入 wallets.json
-            if [ "$(wc -l < wallets.json)" -gt 1 ]; then
+            # 将钱包信息写入 LayerEdge/wallets.json
+            if [ "$(wc -l < LayerEdge/wallets.json)" -gt 1 ]; then
                 echo ",{\"address\": \"$wallet_address\", \"privateKey\": \"$private_key\"}" >> LayerEdge/wallets.json
             else
                 echo "{\"address\": \"$wallet_address\", \"privateKey\": \"$private_key\"}" >> LayerEdge/wallets.json
@@ -182,7 +182,7 @@ function deploy_layeredge_node() {
     fi
 
     # 提示用户操作完成
-    echo "操作完成！代理已保存到 proxy.txt，钱包已保存到 wallets.json，依赖已安装。"
+    echo "操作完成！代理已保存到 LayerEdge/proxy.txt，钱包已保存到 LayerEdge/wallets.json，依赖已安装。"
 
     # 启动项目
     echo "正在启动项目..."

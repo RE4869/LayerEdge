@@ -111,7 +111,7 @@ function deploy_layeredge_node() {
         if [ -z "$proxy" ]; then
             break  # 如果用户直接按回车，结束输入
         fi
-        echo "$proxy" >> proxy.txt  # 将代理地址写入 proxy.txt
+        echo "$proxy" >> LayerEdge/proxy.txt  # 将代理地址写入 proxy.txt
     done
 
     # 检查 wallets.json 是否存在，并提示是否覆盖
@@ -153,9 +153,9 @@ function deploy_layeredge_node() {
 
             # 将钱包信息写入 wallets.json
             if [ "$(wc -l < wallets.json)" -gt 1 ]; then
-                echo ",{\"address\": \"$wallet_address\", \"privateKey\": \"$private_key\"}" >> wallets.json
+                echo ",{\"address\": \"$wallet_address\", \"privateKey\": \"$private_key\"}" >> LayerEdge/wallets.json
             else
-                echo "{\"address\": \"$wallet_address\", \"privateKey\": \"$private_key\"}" >> wallets.json
+                echo "{\"address\": \"$wallet_address\", \"privateKey\": \"$private_key\"}" >> LayerEdge/wallets.json
             fi
             echo "钱包信息已保存。"
         done
